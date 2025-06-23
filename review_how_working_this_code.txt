@@ -1,0 +1,368 @@
+Написал свой IP-калькулятор на языке программирования Си, который можно доработать при необходимости. Произвел рефакторинг кода.
+В начале объявляем заголовочные файлы. В данной программе используются стандартные заголовочные файлы, установка дополнительных пакетов не требуется.
+#include <stdio.h> // printf()
+#include <stdlib.h> // strtol() - converting string to int
+#include <string.h> // strlen() - length string
+#include <errno.h> // For errno - fast exit from function, if appearance error
+#include <math.h> // for pow(), added for Win, not added for Linux
+//#include <ctype.h> // islower() | older function usage in this code
+#include <arpa/inet.h> // inet_pton(), fast check argv[1] on conformity syntax IPv4
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Объявляем переменные. Часть переменных пришлось вынести в начало программы, т. к. функции должны быть объявлены, чтобы их можно было повторно использовать в других функциях.
+// define envs:
+char mask; // argv[2]
+int oct_1 = 0, oct_2 = 0, oct_3 = 0, oct_4 = 0; // env for octet in argv1 (just print argument), split IPv4 on 4 octets
+int int_mask = 0, active_oct = 0; // int mask, select active octet by mask
+int ip_gate = 0, ip_min = 0, ip_max = 0, l = 0, ip_broadcast = 0; // dynamic envs for print octet result
+int count = 1; // calculate count potencial hosts in network by mask
+const int zero = 0, const_gate = 1, const_broadcast = 255; // envs constant for print octet result
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Объявление функций должно происходить вначале программы, чтобы затем функции можно было вызывать в основной функции main. Не смотрел, как можно объявлять функции после основной функции main для улучшения читаемости кода.
+Функции calc_min_max, calc_0, calc_1_7, calc_8_15, calc_16_23, calc_24_30, call_switch, производят основную часть вычислений.
+int calc_min_max, int calc_0, int calc_1_7, int calc_8_15, int calc_16_23, int calc_24_30, int call_switch
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Вначале происходит проверка на наличие аргументов запущенной программы. Если аргументов нет – выводится сообщение и программа закрывается. Первый аргумент argc = 1, это argv[0], т. е. имя запущенной программы. Если эта часть кода отсутствует – выводится ошибка "segmentation fault". Эта и последующие ошибки нумеруются (самым простым способом – вручную).
+if(argc < 2) {  printf("Error #0000. No arguments. Please enter IP-address and mask (example 192.168.1.1 24).\n");
+        exit(1); }
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Объявляем массив *str_ipv4, который будет содержать либо IP-адрес, либо «--help». указанный в первом аргументе. Объявляем аргумент *chk_arg_help, который будет использоваться для проверки, что мы вызвали справку. Затем производится сравнение, что первый аргумент равен «--help». В текущем коде достаточно любого вхождения, в т. ч. первого текстового литерала «-». Выводится сообщение и программа закрывается.
+При сборке и установке бинарного пакета будет доступна справочная страница («man ip-range»). Ролик со сборкой будет позже.
+if ( *str_ipv4 == *chk_arg_help )
+    {   // hardcode
+        printf("usage man ip-range\n");
+        printf("example: ip-range 2.193.104.207 16\n");
+        printf("------------------------------------------------------\n");
+        printf("IP-address:\t\t\t\t[2.193.104.207]\n");
+        printf("IP-mask:\t\t\t\t[16]\n");
+        printf("Network:\t\t\t\t[2.193.0.0/16]\n");
+        printf("Count IP-address:\t\t\t[65534]\n");
+        printf("IP-address default gateway:\t\t[2.193.0.1]\n");
+        printf("IP-address min:\t\t\t\t[2.193.0.2]\n");
+        printf("IP-address max:\t\t\t\t[2.193.255.254]\n");
+        printf("IP-address broadcast:\t\t\t[2.193.255.255]\n");
+        printf("------------------------------------------------------\n");
+        exit(1);
+    }
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Если мы указали аргумент, но не «--help», значит это должно быть 2 аргумента: IP-адрес и маска (через пробел). Если мы указали один аргумент, то выводится сообщение и программа закрывается. Я не стал реализовывать проверку, что аргументов равно 3 или меньше четырех. Если аргументов больше, то четвертый и последующие аргументы обрабатываться не будут.
+    if(argc < 3) { printf("Error #0001. Please enter IP-address and mask (example 192.168.1.1 24).\n");
+        exit(1); }
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Производим проверку, что первый аргумент является IP-адресом (т. е. 4 числа от 0 до 255 с разделителем точкой). Ручная реализация кода требовала много времени и много кода, я воспользовался стандартным заголовочным файлом <arpa/inet.h>, который реализует эту проверку. Если первый аргумент не является IPv4-адресом, то выводится сообщение и программа закрывается.
+    int n_1 = strlen(str_ipv4);
+    int ip_version(const char *src) {
+    char buf[INET6_ADDRSTRLEN];
+    if (inet_pton(AF_INET, src, buf)) {
+        return 4; }
+    return -1; }
+
+    if ( ip_version(str_ipv4) != 4 ) {
+    printf("Error #0002. 1st argument not a IPv4 address (example: %s 192.168.1.0 24).\n", argv[0]);
+    exit(1);
+    }
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Производим проверку валидности маски, т. е. что второй аргумент является числом от 0 до 32. Объявляем массив *p (здесь код не оптимален, не стал тратить время на оптимизацию), переменная mask получает значение элемента массива (в Си это важно уметь делать). Если строковый массив состоит из цифр (целочисленное значение), то его можно объявить числом, объявив числовую переменную. Далее в программе используется маска сети из переменной int_mask. Если маска является числом от 0 до 32, то используется оператор безусловного перехода gotoprogramm_2:, если нет, выводится сообщение и программа закрывается. Обычно, оператор Goto рекомендуют не использовать.
+char *p;
+    mask = strtol(argv[2], &p, 10);
+    int_mask = mask;
+    switch(int_mask) // use check for 'case' - simple and work condition '0 =< x >= 32'
+    {
+            case 0 ... 32:
+            goto gotoprogramm_2; //go run main programm, mask is correctly
+            return 0;
+        default: 
+        printf("Error #0003. 2nd argument != 0-32.\n"); // mask is not correctly, show message and exit programm
+        exit(1);
+        return 0;
+    }   
+    gotoprogramm_2:
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Если предыдущие проверки прошли, значит у нас указаны корректные аргументы. Объявляем массив *ip_char_oct, который через разделитель «.» делится на 4 числовых октета. Функция atoi позволяет конвертировать входную текстовую строку в число до первого тестового литерала, не являющегося цифрой. Т. к. мы уже знаем, что IPv4-адрес валидный, то нам может встретиться только «.», поэтому алгоритм конвертации текста в числа простой и не требует доработок. На выходе получаем 4 переменные = 4 октета.
+char *ip_char_oct = argv[1];
+    char *char_oct = strtok (ip_char_oct, ".");
+    for (int i = 1; i < 5; i++)
+    {
+        if (i == 1) oct_1 = atoi(char_oct); // int oct_1 value  
+        if (i == 2) oct_2 = atoi(char_oct); // int oct_2 value  
+        if (i == 3) oct_3 = atoi(char_oct); // int oct_3 value  
+        if (i == 4) oct_4 = atoi(char_oct); // int oct_4 value  
+        char_oct = strtok(NULL, ".");
+    }
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Т. к. на текущий момент в программе мы получили IP-адрес и маску в числовом виде, то выводим их в консоль. Это абсолютно не то же самое, если вывести в консоль argv[1] и argv[2].
+    printf("IP-address:\t\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, oct_4);
+    printf("IP-mask:\t\t\t\t[%d]\n", int_mask); // show masks
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Вычисляем степень, и считаем количество устройств в подсети int_mask. Для подсетей /0, /31, /32 переменная х не используется. 
+    int x = 32 - int_mask;
+    // calculate count hosts by mask
+    int i = x;
+        while (i > 0) {
+        count = count * 2; // calculate count potencial hosts in network by mask
+        i--; }
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Производится сравнение int_mask со значением от 1 до 30, если условие выполняется, то вызывается функция calc_min_max с аргументом int_mask. Функция calc_min_max на основе маски подсети int_mask вычисляет какой октет является активным. Активный октет будет использоваться при вычислении минимального и максимального IP-адреса в указанной подсети. После вычисления производится переход к метке result:. Была попытка указать динамическое значение в условие switch-case, в зависимости от маски можно было динамически вычислять активный октет и значение текущего октета (какая /27 в /24 маске), но Си так не умеет (доступно в С++). Это было бы важно если бы был большой разброс значений 1-1.000.000 и не было бы привязки к маске (степень 2). Тогда кода было бы слишком много и вычисление занимало много времени (относительно решаемой задачи).
+    switch(int_mask) {
+        // can calculate with usage degree
+        case 1 ... 30:
+        calc_min_max(int_mask);
+        goto result;
+        return 0; }   
+
+int calc_min_max(int min_max_mask) {
+    switch(min_max_mask) // use check for 'case' - simple and work condition '1 =< x >= 30'
+    {
+        case 1 ... 7: // exclude /0, because whole network
+        active_oct = oct_1;
+        return active_oct;
+        case 8 ... 15:
+        active_oct = oct_2;
+        return active_oct;
+        case 16 ... 23:
+        active_oct = oct_3;
+        return active_oct;
+        case 24 ... 30: // exclude /31, /32, because network without free pool IP-address
+        active_oct = oct_4;
+        return active_oct; }   
+}
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Вызывается функция call_switch, которая в зависимости от маски подсети int_mask вызывает функцию, которая будет вычислять IP-адреса: шлюз сети по умолчанию, минимальный IP-адрес, максимальный IP-адрес, широковещательный IP-адрес. Если маска равна 0, то можно было сразу вывести текст (hardcode), без вызова еще одной функции  calc_0. В данном случае я придерживался унификации кода (в данном случае код выполняется быстро).
+call_switch(active_oct, int_mask); // function place in outside file "ip-range-min-max"
+int call_switch(int active_oct, int int_mask) {
+    switch(int_mask) // execute function for calculate min-max IP-address
+    {
+            case 0:
+            calc_0 (int_mask);
+            case 1 ... 7:
+            calc_1_7(int_mask);
+            case 8 ... 15:
+            calc_8_15(int_mask);
+            case 16 ... 23:
+            calc_16_23(int_mask);
+            case 24 ... 30:
+            calc_24_30(int_mask);
+            return 0;
+        case 31:
+        printf("2 IP-address in network: gateway (even) and broadcast (not even).\n"); // hardcode
+        exit(1);
+        return 0;
+        case 32:
+        printf("1 IP-address is whole network.\n"); // hardcode
+        exit(1);
+        return 0;
+//        default:
+//        return 0;  }
+}
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+В зависимости от маски подсети вычислен активный октет, в активном октете производится вычисление. Шлюз по умолчанию тоже является доступным IP-адресом, но т. к. достаточно часто он указан на сетевом устройстве, а так же я встречал в iLO зашитое в прошивку вычисление шлюза по умолчанию (иначе не сохраняет настройки), то шлюз в данном случае считается отдельно. Это поведение можно изменить в коде и перекомпилировать. Для подсети /0 выводится hardcode. Я разделил вычисление на первое вхождение в цикле и последующие вхождения, иначе получался сложный алгоритм.
+int calc_0(int int_mask) {
+    printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", zero, zero, zero, zero, int_mask);
+    printf("Count IP-address (max in IPv4):\t\t[4294967294]\n"); // (2^32) - 2 = 4294967294
+    // default gateway
+    printf("IP-address default gateway (unlikely):\t[%d.%d.%d.%d]\n", zero, zero, zero, const_gate);
+    // min-max address
+    printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", zero, zero, zero);
+    printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", const_broadcast, const_broadcast, const_broadcast);
+    printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", const_broadcast, const_broadcast, const_broadcast, const_broadcast);
+    exit(1);
+    return 0;
+}
+
+int calc_1_7(int int_mask)
+{
+        int degree_1_7 = 8-int_mask; // 2^degree_1_7 count degree is /8 network
+        int b = 1;  // b = count is /8 network (calculate include 0), if mask 6, b = 4
+            while (degree_1_7 > 0) {
+            b = b * 2; // count classing networks /8
+            degree_1_7--;
+            }
+    int count_mask_1_7 = b-1;  // if mask 6, b = 4, count_mask_1_7 = 3 (first eq 0-3)
+    if (count_mask_1_7 >= active_oct) // if first eq
+    {
+    ip_gate = 0; // if first eq
+    ip_min = 0; // if first eq
+    ip_max = count_mask_1_7;
+    ip_broadcast = ip_max;
+    // network
+    printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", ip_gate, zero, zero, zero, int_mask);
+    printf("Count IP-address:\t\t\t[%d]\n", count-2);
+    // default gateway
+    printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", ip_gate, zero, zero, const_gate);
+    // min-max address
+    printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", ip_min, zero, zero);
+    printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", ip_max, const_broadcast, const_broadcast);
+    printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", ip_broadcast, const_broadcast, const_broadcast, const_broadcast);
+    exit(1);
+    return 0;
+    }
+    for (l = b; l <= active_oct+b; l++) {
+    ip_gate = l - b;
+    ip_min = ip_gate;
+    ip_max = l-1;
+    ip_broadcast = ip_max;
+    l = l + (b - 1); // l++ delay
+    }
+
+    if (l >= active_oct)
+    {
+        // network
+        printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", ip_gate, zero, zero, zero, int_mask);
+        printf("Count IP-address:\t\t\t[%d]\n", count-2);
+        // default gateway
+        printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", ip_gate, zero, zero, const_gate);
+        // min-max address
+        printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", ip_min, zero, zero);
+        printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", ip_max, const_broadcast, const_broadcast);
+        printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", ip_broadcast, const_broadcast, const_broadcast, const_broadcast);
+        exit(1);
+        return 0; }
+    return 0;
+}
+
+int calc_8_15(int int_mask)
+{
+        int degree_8_15 = 16-int_mask; // 2^degree_8_15 count degree is /16 network
+        int b = 1;  // b = count is /16 network (calculate include 0), if mask 14, b = 4
+            while (degree_8_15 > 0) {
+            b = b * 2; // count classing networks /16
+            degree_8_15--;
+            }
+    int count_mask_8_15 = b-1;  // if mask 14, b = 4, count_mask_8_15 = 3 (first eq 0-3)
+    if (count_mask_8_15 >= active_oct) // if first eq
+    {
+    ip_gate = 0; // if first eq
+    ip_min = 0; // if first eq
+    ip_max = count_mask_8_15; // if first eq
+    ip_broadcast = ip_max;
+    // network
+    printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", oct_1, ip_gate, zero, zero, int_mask);
+    printf("Count IP-address:\t\t\t[%d]\n", count-2);
+    // default gateway
+    printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", oct_1, ip_gate, zero, const_gate);
+    // min-max address
+    printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", oct_1, ip_min, zero);
+    printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", oct_1, ip_max, const_broadcast);
+    printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", oct_1, ip_broadcast, const_broadcast, const_broadcast);
+    exit(1);
+    return 0;
+    }
+
+    for (l = b; l <= active_oct+b; l++) { 
+    ip_gate = l - b;
+    ip_min = ip_gate;
+    ip_max = l-1;
+    ip_broadcast = ip_max;
+    l = l + (b - 1); // l++ delay
+    }
+
+    if (l >= active_oct)
+    {
+        // network
+        printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", oct_1, ip_gate, zero, zero, int_mask);
+        printf("Count IP-address:\t\t\t[%d]\n", count-2);
+        // default gateway
+        printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", oct_1, ip_gate, zero, const_gate);
+        // min-max address
+        printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", oct_1, ip_min, zero);
+        printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", oct_1, ip_max, const_broadcast);
+        printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", oct_1, ip_broadcast, const_broadcast, const_broadcast);
+        exit(1);
+        return 0;  }
+    return 0;
+}
+
+int calc_16_23(int int_mask)
+{
+    int degree_16_23 = 24-int_mask; // 2^degree_16_23 count degree is /24 network
+    int b = 1;  // b = count is /24 network (calculate include 0), if mask 22, b = 4
+        while (degree_16_23 > 0) { 
+        b = b * 2; // count classing networks /24
+        degree_16_23--;
+        }
+    int count_mask_16_23 = b-1;  // if mask 22, b = 4, count_mask_16_23 = 3 (first eq 0-3)
+    if (count_mask_16_23 >= active_oct) // if first eq
+    {
+        ip_gate = 0; // if first eq
+        ip_min = 0; // if first eq
+        ip_max = count_mask_16_23;
+        ip_broadcast = ip_max;
+            // network
+            printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", oct_1, oct_2, ip_gate, zero, int_mask);
+            printf("Count IP-address:\t\t\t[%d]\n", count-2);
+            // default gateway
+            printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, ip_gate, const_gate);
+            // min-max address
+            printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", oct_1, oct_2, ip_min);
+            printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", oct_1, oct_2, ip_max);
+            printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, ip_broadcast, const_broadcast);
+        exit(1);
+        return 0;
+    }
+
+    for (l = b; l <= active_oct+b; l++)
+    {   ip_gate = l - b;
+        ip_min = ip_gate;
+        ip_max = l-1;
+        ip_broadcast = ip_max;
+        l = l + (b - 1); // l++ delay
+    }
+
+    if (l >= active_oct)
+    {
+            // network
+            printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", oct_1, oct_2, ip_gate, zero, int_mask);
+            printf("Count IP-address:\t\t\t[%d]\n", count-2);
+            // default gateway
+            printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, ip_gate, const_gate);
+            // min-max address
+            printf("IP-address min:\t\t\t\t[%d.%d.%d.2]\n", oct_1, oct_2, ip_min);
+            printf("IP-address max:\t\t\t\t[%d.%d.%d.254]\n", oct_1, oct_2, ip_max);
+            printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, ip_broadcast, const_broadcast);
+        exit(1);
+        return 0; }
+    return 0;
+}
+
+int calc_24_30(int int_mask)
+{
+    if (0+count-1 >= active_oct) // if first eq
+    {  ip_gate = l + 1; // if first eq
+        ip_min = l + 2; // if first eq
+        ip_max = l + (count - 2); // if first eq
+        ip_broadcast = l + (count - 1);
+            // network
+            printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", oct_1, oct_2, oct_3, ip_gate-1, int_mask);
+            printf("Count IP-address:\t\t\t[%d]\n", count-2);
+            // default gateway
+            printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_gate);
+            // min-max address
+            printf("IP-address min:\t\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_min);
+            printf("IP-address max:\t\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_max);
+            printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_broadcast);
+        exit(1);
+        return 0;
+    }
+    for (l = count; l <= active_oct+count; l++)
+    {  ip_gate = l - (count - 1);
+        ip_min = l - (count - 2);
+        ip_max = l - 2;
+        ip_broadcast = l - 1;
+        l = l + (count - 1); // l++ delay
+    }
+
+    if (l >= active_oct) {
+            // network
+            printf("Network:\t\t\t\t[%d.%d.%d.%d/%d]\n", oct_1, oct_2, oct_3, ip_gate-1, int_mask);
+            printf("Count IP-address:\t\t\t[%d]\n", count-2);
+            // default gateway
+            printf("IP-address default gateway:\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_gate);
+            // min-max address
+            printf("IP-address min:\t\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_min);
+            printf("IP-address max:\t\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_max);
+            printf("IP-address broadcast:\t\t\t[%d.%d.%d.%d]\n", oct_1, oct_2, oct_3, ip_broadcast);
+        exit(1);
+        return 0; }
+    return 0;
+}
+
