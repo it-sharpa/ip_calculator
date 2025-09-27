@@ -1,0 +1,204 @@
+sudo su
+<in astra repo not have packet hashdeep>
+apt update && sudo apt install dpkg debconf debhelper lintian devscripts hashdeep 
+mkdir -p ip-range/ip-range-0.10/DEBIAN ip-range/ip-range-0.10/usr/bin ip-range/ip-range-0.10/usr/share/man/man1
+touch ip-range/ip-range-0.10/DEBIAN/{conffiles,control,dirs,md5sums}
+cd ip-range/ip-range-0.10/usr/share/man/man1
+nano ./ip-range.1
+<add text to file ip-range.1 (an example is shown at the very bottom)>
+gzip ip-range.1 ip-range.1.gz
+chmod 444 ./ip-range.1.gz
+<may change date a archive file>
+touch -t 2507231253 ./ip-range.1.gz
+cd -
+
+cat <<EOF > ip-range/ip-range-0.10/DEBIAN/conffiles
+/usr/share/man/man1/ip-range.1.gz
+/usr/bin/ip-range
+EOF
+
+cd ip-range/ip-range-0.10/usr/bin
+<download early executable file>
+wget https://gitflic.ru/project/it-sharpa/ip_calculator/release/b18466ff-cf3d-4cd1-b98d-d824b6f0234f/eb428174-f113-4396-bfab-213977e11854/download
+chmod 555 ./download
+mv ./download ./ip-range
+<may change date a executable file>
+touch -t 2507231253 ./ip-range
+cd -
+
+cat <<EOF > ip-range/ip-range-0.10/DEBIAN/control
+Package: ip-range
+Source: ip-range (0.10)
+Priority: optional
+Version: 0.10
+Provides: ip-range
+Architecture: amd64
+Maintainer: Eugene Lutin <tylerfc@inbox.ru>
+Homepage: https://github.com/it-sharpa/ip_calculator
+Installed-Size: 77
+Pre-Depends: libc6 (>= 2.34)
+Depends: bash | dash
+Conflicts: ip-range-universal
+Description: utility, which calculating network settings usage IP-address and mask. ip-range developing on C language
+EOF
+
+cat <<EOF > ip-range/ip-range-0.10/DEBIAN/dirs
+/usr/share/man/man1/
+/usr/bin
+EOF
+
+cd ip-range/ip-range-0.10
+md5sum usr/bin/ip-range > DEBIAN/md5sums
+md5sum usr/share/man/man1/ip-range.1.gz >> DEBIAN/md5sums
+<change the path for package files>
+sed -i 's/usr/\/usr/g' DEBIAN/md5sums
+cd ../
+
+# change postinst, postrm, preinst and prerm (in this example - not used)
+# path: /home/user/test-deb/ip-range
+fakeroot dpkg-deb --build ip-range-0.10
+chmod +x ./ip-range-0.10.deb
+<may change date a create build>
+touch -t 2507231253 ./ip-range-0.10.deb
+
+apt install ./ip-range-0.10.deb
+ls -l /usr/bin/ip-range
+
+# for running only on test stand (forcibly breaks package dependencies):
+# dpkg -i --force-depends ./<package>.deb
+# apt-get check
+
+----------------------------------------------------------------------------
+<if need do rebuild executable file from source>
+cd /home/<user>
+mkdir ip-range-bin
+<download source code>
+apt install make gcc
+----------------------------------------------------------------------------
+# for ip-range-universal:
+mkdir -p ip-range/ip-range-universal-0.10/DEBIAN ip-range/ip-range-universal-0.10/usr/bin ip-range/ip-range-universal-0.10/usr/share/man/man1
+touch ip-range/ip-range-universal-0.10/DEBIAN/{conffiles,control,dirs,md5sums}
+cd ip-range/ip-range-universal-0.10/usr/share/man/man1
+nano ./ip-range.1
+<add text to file ip-range.1 (an example is shown at the very bottom)>
+gzip ip-range.1 ip-range.1.gz
+chmod 444 ./ip-range.1.gz
+<may change date a archive file>
+touch -t 2507231253 ./ip-range.1.gz
+cd -
+
+cat <<EOF > ip-range/ip-range-universal-0.10/DEBIAN/conffiles
+/usr/share/man/man1/ip-range.1.gz
+/usr/bin/ip-range
+EOF
+
+cd ip-range/ip-range-universal-0.10/usr/bin
+<wget 'static' executable file>
+wget https://gitflic.ru/project/it-sharpa/ip_calculator/release/b18466ff-cf3d-4cd1-b98d-d824b6f0234f/57dcecce-d5dc-40cd-b5da-d357e9c096d4/download
+chmod 555 ./download
+mv ./download ./ip-range
+<may change date a executable file>
+touch -t 2507231253 ./ip-range
+cd -
+
+cat <<EOF > ip-range/ip-range-universal-0.10/DEBIAN/control
+Package: ip-range-universal
+Source: ip-range-universal (0.10)
+Priority: optional
+Version: 0.10
+Provides: ip-range-universal
+Architecture: amd64
+Maintainer: Eugene Lutin <tylerfc@inbox.ru>
+Homepage: https://github.com/it-sharpa/ip_calculator
+Installed-Size: 812
+Pre-Depends: libc6
+Depends: bash | dash
+Conflicts: ip-range
+Description: utility, which calculating network settings usage IP-address and mask. ip-range developing on C language. Build executable file with gcc opt "-static", no depends for libs for installation
+EOF
+
+cat <<EOF > ip-range/ip-range-0.10/DEBIAN/dirs
+/usr/share/man/man1/
+/usr/bin
+EOF
+
+cd ip-range/ip-range-universal-0.10
+md5sum usr/bin/ip-range > DEBIAN/md5sums
+md5sum usr/share/man/man1/ip-range.1.gz >> DEBIAN/md5sums
+<change the path for package files>
+sed -i 's/usr/\/usr/g' DEBIAN/md5sums
+cd ../
+
+# change postinst, postrm, preinst and prerm (in this example - not used)
+# path: /home/user/test-deb/ip-range
+fakeroot dpkg-deb --build ip-range-universal-0.10
+chmod +x ./ip-range-universal-0.10.deb
+<may change date a create build>
+touch -t 2507231253 ./ip-range-universal-0.10.deb
+
+apt install ./ip-range-universal-0.10.deb
+ls -l /usr/bin/ip-range
+
+# for running only on test stand (forcibly breaks package dependencies):
+# dpkg -i --force-depends ./<package>.deb
+# apt-get check
+
+|--------------------------|
+| Example write man pages: |
+|--------------------------|
+| nano ./ip-range.1        |
+|--------------------------|
+.TH 'ip-range' "1" "23 JUNE 2025" "ip-range version 0.10" "User Commands"
+.TP
+.SH NAME ip-range - utility, which calculating network settings usage IP-address and mask
+.TP
+.SH SYNOPSYS
+.TP
+.SH ip-range IP-address mask
+.TP
+.SH ip-range --help
+.TP
+.SH OPTION
+.TP
+\fB\--help\fR small help message.
+.TP
+.SH DESCRIPTION
+.TP
+        ip-range calculating:
+ - the network range;
+ - count IP-addresses in the network range;
+ - IP-address default gateway;
+ - minimum IP-address in the network;
+ - maximum IP-address in the network;
+ - IP-address for broadcasting.
+.TP
+Parameters, must specify: IP-address (not CIDR format) and mask (CIDR format). IP-address default gateway and broadcast are subtracted from the total number (count) of IP-addresses. In this case, the default gateway address in the specified network may differ (it should be noted that on some devices and firmware it is hard-coded as the first IP-address in the network). Shown count available IP-address to use. Networks /0, /31 and /32 not calculated (hardcode).
+.TP
+.SH EXAMPLE
+ ip-range 192.168.1.0 24
+ --------------------------------------------------------
+ IP-address:                             [192.168.1.0]
+ IP-mask:                                [24]
+ Network:                                [192.168.1.0/24]
+ Count IP-address:                       [254]
+ IP-address default gateway:             [192.168.1.1]
+ IP-address min:                         [192.168.1.2]
+ IP-address max:                         [192.168.1.254]
+ IP-address broadcast:                   [192.168.1.255]
+ --------------------------------------------------------
+.TP
+        ip-range 28.53.50.124 14
+ --------------------------------------------------------
+ IP-address:                             [28.53.50.124]
+ IP-mask:                                [17]
+ Network:                                [28.53.0.0/17]
+ Count IP-address:                       [32766]
+ IP-address default gateway:             [28.53.0.1]
+ IP-address min:                         [28.53.0.2]
+ IP-address max:                         [28.53.127.254]
+ IP-address broadcast:                   [28.53.127.255]
+ --------------------------------------------------------
+.TP
+This man page was written by 'Eugene Lutin' <tylerfc@inbox.ru> for the Debian GNU/Linux distribution. ip-range developing on C, license: Apache-2.0
+.TP
+Source code available: https://github.com/it-sharpa/ip_calculator https://gitflic.ru/project/it-sharpa/ip_calculator
