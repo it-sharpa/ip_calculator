@@ -1,0 +1,13 @@
+Package: ip-range
+Source: ip-range (0.10)
+Priority: optional
+Version: 0.10
+Provides: ip-range
+Architecture: amd64
+Maintainer: Eugene Lutin <tylerfc@inbox.ru>
+Homepage: https://github.com/it-sharpa/ip_calculator
+Installed-Size: 77
+Pre-Depends: libc6 (>= 2.34)
+Depends: bash | dash
+Conflicts: ip-range-universal
+Description: utility, which calculating network settings usage IP-address and mask. ip-range developing on C language
