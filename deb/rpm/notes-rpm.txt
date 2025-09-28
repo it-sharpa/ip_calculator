@@ -1,0 +1,222 @@
+sudo su
+yum install rpmdevtools rpmlint gcc make
+cd /root
+mkdir -p ip-range/ip-range-0.10-0/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} ip-range/ip-range-0.10-0/rpmbuild/usr/share/man/man1 ip-range/ip-range-0.10-0/rpmbuild/usr/bin
+cd ip-range/ip-range-0.10-0
+<if was added some version programm>
+ln -s -d ip-range/ip-range-0.10-0/rpmbuild rpmbuild
+rpmdev-newspec ./rpmbuild/SPECS/ip-range-0.10-0.spec
+
+cd rpmbuild/usr/share/man/man1
+nano ./ip-range.1
+<add text to file ip-range.1 (an example is shown at the very bottom)>
+gzip ip-range.1 ip-range.1.gz
+chmod 444 ./ip-range.1.gz
+<may change date a archive file>
+touch -t 2507231253 ./ip-range.1.gz
+cd -
+
+cd rpmbuild/usr/bin/
+<download early executable file>
+wget https://gitflic.ru/project/it-sharpa/ip_calculator/release/b18466ff-cf3d-4cd1-b98d-d824b6f0234f/eb428174-f113-4396-bfab-213977e11854/download
+chmod 555 ./download
+mv ./download ./ip-range
+<may change date a executable file>
+touch -t 2507231253 ./ip-range
+cd -
+
+nano ./rpmbuild/SPECS/ip-range-0.10-0.spec
+------------------------------------------
+# spec file for package ip-range v. 0.10-0
+# rules v.1.0
+#
+# Copyright (c) 2025 'Eugene Lutin' <tylerfc@inbox.ru>
+# The license for this file: Apache-2.0
+
+Name:           ip-range
+Summary:        ip calculator
+URL:            https://github.com/it-sharpa/ip_calculator
+License:        Apache-2.0
+Provides:       ip-range
+Version:        0.10
+Release:        0%{?dist}
+Source0:        https://github.com/it-sharpa/ip_calculator
+BuildArch:      x86_64
+Conflicts:      ip-range-universal
+Requires:       bash
+Requires:       glibc >= 2.34
+
+%description
+utility, which calculating network settings usage IP-address and mask. ip-range developing on C language
+
+%install
+rm -rf /root/rpmbuild/BUILDROOT/*
+rm -rf /root/rpmbuild/RPMS/*/*
+mkdir -p %{buildroot}/%{_exec_prefix}/bin/ %{buildroot}/%{_datarootdir}/man/man1/
+install -Dpm 0555 /root/rpmbuild/%{_exec_prefix}/bin/%{name} %{buildroot}/%{_exec_prefix}/bin/%{name}
+install -Dpm 0444 /root/rpmbuild/%{_datarootdir}/man/man1/%{name}.1.gz %{buildroot}/%{_datarootdir}/man/man1/%{name}.1.gz
+
+%files
+%{_exec_prefix}/bin/%{name}
+%doc %{_datarootdir}/man/man1/%{name}.1.gz
+
+%changelog
+* Mon Jun 23 2025 root - 0:0.10-0
+- added minimum functional IP calculator
+------------------------------------------
+
+ln -s -d ip-range/ip-range-0.10-0/rpmbuild rpmbuild
+rpmlint ./rpmbuild/SPECS/ip-range-0.10-0.spec
+# opt "nobuild" may can skip
+rpmbuild -v -bb --nobuild rpmbuild/SPECS/ip-range-0.10-0.spec
+-------------------------------------------------------------
+rpmbuild -v -bb rpmbuild/SPECS/ip-range-0.10-0.spec
+dnf install ./rpmbuild/RPMS/x86_64/ip-range-0.10-0.el7.x86_64.rpm
+rpm -V ip-range-0.10-0
+# rm -f ./rpmbuild
+
+----------------------------------------------------------------------------
+<if need do rebuild executable file from source>
+cd /home/<user>
+mkdir ip-range-bin
+<download source code>
+apt install make gcc
+----------------------------------------------------------------------------
+# for ip-range-universal:
+sudo su
+cd /root
+rm -f rpmbuild
+yum install rpmdevtools rpmlint gcc make
+mkdir -p ip-range/ip-range-universal-0.10-0/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} ip-range/ip-range-universal-0.10-0/rpmbuild/usr/share/man/man1 ip-range/ip-range-universal-0.10-0/rpmbuild/usr/bin
+<if was added some version programm>
+ln -s -d ip-range/ip-range-universal-0.10-0/rpmbuild rpmbuild
+cd ip-range/ip-range-universal-0.10-0
+rpmdev-newspec ./rpmbuild/SPECS/ip-range-universal-0.10-0.spec
+
+cd rpmbuild/usr/share/man/man1
+nano ./ip-range.1
+<add text to file ip-range.1 (an example is shown at the very bottom)>
+gzip ip-range.1 ip-range.1.gz
+chmod 444 ./ip-range.1.gz
+<may change date a archive file>
+touch -t 2507231253 ./ip-range.1.gz
+cd -
+
+cd rpmbuild/usr/bin/
+<download early executable file>
+wget https://gitflic.ru/project/it-sharpa/ip_calculator/release/b18466ff-cf3d-4cd1-b98d-d824b6f0234f/57dcecce-d5dc-40cd-b5da-d357e9c096d4/download
+chmod 555 ./download
+mv ./download ./ip-range
+<may change date a executable file>
+touch -t 2507231253 ./ip-range
+cd -
+
+nano ./rpmbuild/SPECS/ip-range-universal-0.10-0.spec
+----------------------------------------------------
+# spec file for package ip-range-universal v. 0.10-0
+# rules v.1.0
+#
+# Copyright (c) 2025 'Eugene Lutin' <tylerfc@inbox.ru>
+# The license for this file: Apache-2.0
+
+Name:           ip-range-universal
+Summary:        ip calculator
+URL:            https://github.com/it-sharpa/ip_calculator
+License:        Apache-2.0
+Provides:       ip-range
+Version:        0.10
+Release:        0%{?dist}
+Source0:        https://github.com/it-sharpa/ip_calculator
+BuildArch:      x86_64
+Conflicts:      ip-range
+Requires:       bash
+Requires:       glibc
+
+%description
+utility, which calculating network settings usage IP-address and mask. ip-range developing on C language. Build executable file with gcc opt "-static", no depends for libs for installation
+
+%install
+rm -rf /root/rpmbuild/BUILDROOT/*
+rm -rf /root/rpmbuild/RPMS/*/*
+mkdir -p %{buildroot}/%{_exec_prefix}/bin/ %{buildroot}/%{_datarootdir}/man/man1/
+install -Dpm 0555 /root/rpmbuild/%{_exec_prefix}/bin/ip-range %{buildroot}/%{_exec_prefix}/bin/ip-range
+install -Dpm 0444 /root/rpmbuild/%{_datarootdir}/man/man1/ip-range.1.gz %{buildroot}/%{_datarootdir}/man/man1/ip-range.1.gz
+
+%files
+%{_exec_prefix}/bin/ip-range
+%doc %{_datarootdir}/man/man1/ip-range.1.gz
+
+%changelog
+* Mon Jun 23 2025 root - 0:0.10-0
+- added minimum functional IP calculator
+----------------------------------------------------
+
+rpmlint ./rpmbuild/SPECS/ip-range-universal-0.10-0.spec
+# opt "nobuild" may can skip
+rpmbuild -v -bb --nobuild rpmbuild/SPECS/ip-range-universal-0.10-0.spec
+-------------------------------------------------------------
+rpmbuild -v -bb rpmbuild/SPECS/ip-range-universal-0.10-0.spec
+dnf install ./rpmbuild/RPMS/x86_64/ip-range-universal-0.10-0.el7.x86_64.rpm
+dnf install ./rpmbuild/RPMS/x86_64/ip-range-universal-0.10-0.el7.x86_64.rpm --allowerasing
+rpm -V ip-range-universal
+# rm -f ./rpmbuild
+
+|--------------------------|
+| Example write man pages: |
+|--------------------------|
+| nano ./ip-range.1        |
+|--------------------------|
+.TH 'ip-range' "1" "23 JUNE 2025" "ip-range version 0.10" "User Commands"
+.TP
+.SH NAME ip-range - utility, which calculating network settings usage IP-address and mask
+.TP
+.SH SYNOPSYS
+.TP
+.SH ip-range IP-address mask
+.TP
+.SH ip-range --help
+.TP
+.SH OPTION
+.TP
+\fB\--help\fR small help message.
+.TP
+.SH DESCRIPTION
+.TP
+        ip-range calculating:
+ - the network range;
+ - count IP-addresses in the network range;
+ - IP-address default gateway;
+ - minimum IP-address in the network;
+ - maximum IP-address in the network;
+ - IP-address for broadcasting.
+.TP
+Parameters, must specify: IP-address (not CIDR format) and mask (CIDR format). IP-address default gateway and broadcast are subtracted from the total number (count) of IP-addresses. In this case, the default gateway address in the specified network may differ (it should be noted that on some devices and firmware it is hard-coded as the first IP-address in the network). Shown count available IP-address to use. Networks /0, /31 and /32 not calculated (hardcode).
+.TP
+.SH EXAMPLE
+ ip-range 192.168.1.0 24
+ --------------------------------------------------------
+ IP-address:                             [192.168.1.0]
+ IP-mask:                                [24]
+ Network:                                [192.168.1.0/24]
+ Count IP-address:                       [254]
+ IP-address default gateway:             [192.168.1.1]
+ IP-address min:                         [192.168.1.2]
+ IP-address max:                         [192.168.1.254]
+ IP-address broadcast:                   [192.168.1.255]
+ --------------------------------------------------------
+.TP
+        ip-range 28.53.50.124 14
+ --------------------------------------------------------
+ IP-address:                             [28.53.50.124]
+ IP-mask:                                [17]
+ Network:                                [28.53.0.0/17]
+ Count IP-address:                       [32766]
+ IP-address default gateway:             [28.53.0.1]
+ IP-address min:                         [28.53.0.2]
+ IP-address max:                         [28.53.127.254]
+ IP-address broadcast:                   [28.53.127.255]
+ --------------------------------------------------------
+.TP
+This man page was written by 'Eugene Lutin' <tylerfc@inbox.ru> for the Debian GNU/Linux distribution. ip-range developing on C, license: Apache-2.0
+.TP
+Source code available: https://github.com/it-sharpa/ip_calculator https://gitflic.ru/project/it-sharpa/ip_calculator
